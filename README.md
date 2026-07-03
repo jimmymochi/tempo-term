@@ -81,11 +81,24 @@ Any pane in any tab can be split four ways: click a sidebar item to auto-split, 
 
 ### Source control
 
-- Stage, unstage, commit and push, with changes grouped by folder and folder-level staging
+- Stage, unstage, commit and push from the Git sidebar
+- View staged and unstaged changes as either a flat list or a nested folder tree
+- Stage or unstage an entire folder recursively, including all files in its subfolders
+- Click a changed file to open its diff; right-click for open, open in new tab, show diff, copy path, reveal in Finder and Git actions
+- Discard unstaged changes for a tracked file with a confirmation step
 - Generate a Conventional Commits message from the staged diff with AI
+- Recent commits jump straight into the Git Graph, selecting the matching commit when it is loaded
+
+### Git Graph & diffs
+
 - Commit graph (DAG) with branch and tag actions; click any commit to see its changed files and diff
+- Toolbar controls for branches, remote branches, stashes, tags, fetch, keyword search, and date or topological ordering
+- Switch local branches from the HEAD menu, or create tracking branches from remote branches
+- Worktree selector for repositories with multiple Git worktrees; switching worktrees updates the workspace root and file explorer
+- Commit details can show changed files as a flat list or folder tree, then render the selected file's diff
+- Dedicated side-by-side diff tabs for uncommitted files: staged diffs compare HEAD vs index, while unstaged diffs compare index vs working tree
+- Diff tabs include syntax highlighting, line numbers, word wrap, previous/next change navigation, a change counter and collapsed unchanged regions
 - Ask AI to explain a commit's diff in plain, scannable language
-- Toolbar for remote branches, stashes, fetch and keyword search
 
 ![Git commit graph](screenshots/git-graph.png)
 

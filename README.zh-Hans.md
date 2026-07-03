@@ -81,11 +81,24 @@ TempoTerm 是一个用 Tauri 2 加 Rust 与 React 19 打造的桌面 app，把�
 
 ### 版本控制
 
-- 暂存、取消暂存、提交与推送，变更按文件夹分组，可整个文件夹一次 stage
+- 从 Git 侧栏暂存、取消暂存、提交与推送
+- staged 与 unstaged 变更可用平面列表或嵌套文件夹树查看
+- 可递归暂存或取消暂存整个文件夹，包含所有子文件夹里的文件
+- 点击变更文件可打开 diff；右键可打开文件、在新标签页打开、显示 diff、复制路径、在 Finder 中显示与执行 Git 操作
+- 对已跟踪文件丢弃 unstaged 变更前会先弹出确认
 - 用 AI 从 staged diff 生成 Conventional Commits 信息
+- Recent commits 可直接跳到 Git Graph，并在加载后选中对应 commit
+
+### Git Graph 与 Diff
+
 - 提交图（DAG）与分支、tag 操作；点任一 commit 看变更文件与 diff
+- 工具栏支持分支、远程分支、stash、tag、fetch、关键字搜索，以及按日期或拓扑排序
+- 可从 HEAD 菜单切换本地分支，也可从远程分支创建 tracking branch
+- 多 worktree 的 repository 会显示 worktree selector；切换 worktree 会同步更新 workspace root 与文件管理器
+- Commit 详情中的变更文件可用平面列表或文件夹树查看，选中文件后显示该文件 diff
+- 未提交文件可打开独立左右对照 diff 标签页：staged diff 比对 HEAD 与 index，unstaged diff 比对 index 与 working tree
+- Diff 标签页支持语法高亮、行号、换行、上一个／下一个变更导航、变更计数，以及折叠未变更区块
 - 让 AI 用白话、好扫读的方式解释这个 commit 的 diff
-- 工具栏支持远程分支、stash、fetch 与关键字搜索
 
 ![Git 提交图](screenshots/git-graph.png)
 
