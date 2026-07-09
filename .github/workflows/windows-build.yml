@@ -10,14 +10,15 @@ name: Build Windows
 #   • workflow_dispatch — build on demand, installers land as workflow artifacts.
 #   • push of a `v*` tag — also uploads the installers to the matching GitHub release.
 #
-# Required repository secret (Settings → Secrets and variables → Actions):
+# Repository secrets (Settings → Secrets and variables → Actions):
 #   • TAURI_SIGNING_PRIVATE_KEY          — contents of ~/.tauri/tempo-term.key
 #                                          (matches the pubkey in tauri.conf.json).
 #   • TAURI_SIGNING_PRIVATE_KEY_PASSWORD — the key was generated without a
 #                                          password, so set this secret to an
 #                                          empty string.
-# These are mandatory: tauri.conf.json sets `createUpdaterArtifacts: true`, so the
-# build fails if it can't sign the updater bundle.
+# These are mandatory for tag builds. workflow_dispatch builds fall back to a
+# temporary CI-only key when secrets are missing so Windows artifacts can still
+# be produced for smoke testing.
 
 on:
   workflow_dispatch:
@@ -60,12 +61,44 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve updater signing key
+        id: signing-key
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${TAURI_SIGNING_PRIVATE_KEY_SECRET:-}" ]]; then
+            {
+              echo "private_key<<__TAURI_PRIVATE_KEY__"
+              printf "%s\n" "$TAURI_SIGNING_PRIVATE_KEY_SECRET"
+              echo "__TAURI_PRIVATE_KEY__"
+              echo "private_key_password=${TAURI_SIGNING_PRIVATE_KEY_PASSWORD_SECRET:-}"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is required for tag builds."
+            exit 1
+          fi
+
+          key_path="$RUNNER_TEMP/tempo-term-ci-updater.key"
+          pnpm tauri signer generate --ci --write-keys "$key_path" --force
+          {
+            echo "private_key_path=$key_path"
+            echo "private_key_password="
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build Windows app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ steps.signing-key.outputs.private_key }}
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ steps.signing-key.outputs.private_key_path }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ steps.signing-key.outputs.private_key_password }}
         with:
           # Empty tagName ⇒ build only (no release upload), used by workflow_dispatch.
           # On a v* tag push, attach the installers to that release.
