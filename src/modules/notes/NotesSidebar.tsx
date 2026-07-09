@@ -128,6 +128,9 @@ function FolderRow({ folder, depth }: { folder: FolderNode; depth: number }) {
   const isOver = useNoteDragStore(
     (s) => s.hover?.kind === "folder" && s.hover.path === folder.path,
   );
+  const rootPath = useSettingsStore((s) => s.notesFolderPath);
+  const isMultiFolder = rootPath ? rootPath.includes(";") : false;
+  const isWorkspaceRootFolder = isMultiFolder && depth === 0;
 
   const [collapsed, setCollapsed] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -183,13 +186,19 @@ function FolderRow({ folder, depth }: { folder: FolderNode; depth: number }) {
             className="min-w-0 flex-1 rounded border border-accent bg-bg px-1 py-0.5 text-sm text-fg outline-none"
           />
         ) : (
-          <Tooltip label={t("renameFolderHint")} className="min-w-0 flex-1">
+          <Tooltip label={isWorkspaceRootFolder ? "" : t("renameFolderHint")} className="min-w-0 flex-1">
             <span
-              onDoubleClick={() => {
-                setEditing(true);
-                setDraft(folder.name);
-              }}
-              className="min-w-0 flex-1 cursor-text truncate py-1 text-sm text-fg-muted"
+              onDoubleClick={
+                isWorkspaceRootFolder
+                  ? undefined
+                  : () => {
+                      setEditing(true);
+                      setDraft(folder.name);
+                    }
+              }
+              className={`min-w-0 flex-1 truncate py-1 text-sm text-fg-muted ${
+                isWorkspaceRootFolder ? "cursor-default font-semibold text-fg" : "cursor-text"
+              }`}
             >
               {folder.name}
             </span>
@@ -205,16 +214,36 @@ function FolderRow({ folder, depth }: { folder: FolderNode; depth: number }) {
             <FilePlus size={13} />
           </button>
         </Tooltip>
-        <Tooltip label={t("deleteFolder")} className="mr-2">
-          <button
-            type="button"
-            aria-label={t("deleteFolder")}
-            onClick={() => void deleteNote(folder.path)}
-            className="rounded p-0.5 text-fg-subtle hover:text-danger"
-          >
-            <Trash2 size={13} />
-          </button>
-        </Tooltip>
+        {isWorkspaceRootFolder ? (
+          <Tooltip label={t("removeFolderFromWorkspace") || "移出工作區"} className="mr-2">
+            <button
+              type="button"
+              aria-label="移出工作區"
+              onClick={() => {
+                if (!rootPath) return;
+                const currentPaths = rootPath.split(";").filter((p) => p.trim() !== "");
+                const nextPaths = currentPaths.filter((p) => p !== folder.path);
+                const newPath = nextPaths.length > 0 ? nextPaths.join(";") : null;
+                useSettingsStore.getState().setNotesFolderPath(newPath);
+                void useNotesStore.getState().setRoot(newPath);
+              }}
+              className="rounded p-0.5 text-fg-subtle hover:bg-border-strong hover:text-danger"
+            >
+              <Trash2 size={13} />
+            </button>
+          </Tooltip>
+        ) : (
+          <Tooltip label={t("deleteFolder")} className="mr-2">
+            <button
+              type="button"
+              aria-label={t("deleteFolder")}
+              onClick={() => void deleteNote(folder.path)}
+              className="rounded p-0.5 text-fg-subtle hover:text-danger"
+            >
+              <Trash2 size={13} />
+            </button>
+          </Tooltip>
+        )}
       </div>
       {!collapsed && (
         <ul>
@@ -281,6 +310,26 @@ export function NotesSidebar() {
     setPendingFolder(null);
   }
 
+  function addWorkspaceFolder() {
+    void (async () => {
+      try {
+        const path = await pickNotesFolder();
+        if (!path) {
+          return;
+        }
+        const currentPaths = rootPath ? rootPath.split(";").filter((p) => p.trim() !== "") : [];
+        if (currentPaths.includes(path)) {
+          return;
+        }
+        const newPath = [...currentPaths, path].join(";");
+        useSettingsStore.getState().setNotesFolderPath(newPath);
+        void useNotesStore.getState().setRoot(newPath);
+      } catch {
+        // Dialog plugin failure
+      }
+    })();
+  }
+
   function newNote() {
     if (!rootPath) {
       return;
@@ -327,6 +376,16 @@ export function NotesSidebar() {
               className="rounded p-1 text-fg-muted hover:bg-bg-elevated hover:text-fg"
             >
               <FolderPlus size={15} />
+            </button>
+          </Tooltip>
+          <Tooltip label={t("addFolderToWorkspace") || "加入資料夾至工作區"}>
+            <button
+              type="button"
+              aria-label="加入資料夾"
+              onClick={addWorkspaceFolder}
+              className="rounded p-1 text-fg-muted hover:bg-bg-elevated hover:text-fg"
+            >
+              <SquarePlus size={15} />
             </button>
           </Tooltip>
           <Tooltip label={t("changeFolder")}>

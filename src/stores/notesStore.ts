@@ -114,8 +114,41 @@ export const useNotesStore = create<NotesState>()((set, get) => ({
     }
     set({ loading: true, error: null });
     try {
-      const tree = await readTree(rootPath);
-      set({ tree, loading: false });
+      const paths = rootPath.split(";").filter((p) => p.trim() !== "");
+      if (paths.length > 1) {
+        const trees = await Promise.all(
+          paths.map(async (path) => {
+            let folderName = path;
+            const lastSlash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+            if (lastSlash >= 0) {
+              folderName = path.slice(lastSlash + 1);
+            }
+            if (!folderName) {
+              folderName = path;
+            }
+            try {
+              const children = await readTree(path);
+              return {
+                kind: "folder" as const,
+                path: path,
+                name: folderName,
+                children: children,
+              };
+            } catch (err) {
+              return {
+                kind: "folder" as const,
+                path: path,
+                name: `${folderName} (Load Failed)`,
+                children: [],
+              };
+            }
+          })
+        );
+        set({ tree: trees, loading: false });
+      } else {
+        const tree = await readTree(rootPath);
+        set({ tree, loading: false });
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to read notes folder";
       set({ loading: false, error: message });
@@ -127,14 +160,16 @@ export const useNotesStore = create<NotesState>()((set, get) => ({
   writeNote: (path, content) => fsWriteFile(path, content),
 
   createNote: async (dirPath) => {
-    const path = await uniqueChildPath(dirPath, "Untitled", ".md");
+    const targetDir = dirPath.split(";")[0];
+    const path = await uniqueChildPath(targetDir, "Untitled", ".md");
     await fsCreateFile(path);
     await get().refresh();
     return path;
   },
 
   createFolder: async (dirPath, name) => {
-    const path = await uniqueChildPath(dirPath, name, "");
+    const targetDir = dirPath.split(";")[0];
+    const path = await uniqueChildPath(targetDir, name, "");
     await fsCreateDir(path);
     await get().refresh();
     return path;

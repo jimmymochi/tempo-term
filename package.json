@@ -37,6 +37,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@tiptap/extension-code-block-lowlight": "^2.27.2",
+    "@tiptap/extension-image": "^3.27.3",
     "@tiptap/extension-link": "^2.27.2",
     "@tiptap/extension-placeholder": "^2.27.2",
     "@tiptap/extension-task-item": "^2.27.2",

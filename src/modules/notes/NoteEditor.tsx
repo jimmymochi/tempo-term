@@ -20,6 +20,8 @@ import { exitCode } from "@tiptap/pm/commands";
 import { Check, Copy, SquareTerminal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import Image from "@tiptap/extension-image";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { runCommandInTerminal } from "@/modules/terminal/lib/terminalBus";
 import { isWebUrl } from "@/lib/url";
 import { createSlashCommand } from "./slashCommand";
@@ -130,6 +132,49 @@ const CodeBlock = CodeBlockLowlight.extend({
   },
 }).configure({ lowlight, exitOnArrowDown: true, exitOnTripleEnter: true });
 
+function getTauriSafeSrc(src: string): string {
+  if (!src) return "";
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:")
+  ) {
+    return src;
+  }
+  let cleanPath = src;
+  if (cleanPath.startsWith("file://")) {
+    cleanPath = cleanPath.replace(/^file:\/\//i, "");
+    try {
+      cleanPath = decodeURIComponent(cleanPath);
+    } catch {}
+  }
+  try {
+    return convertFileSrc(cleanPath);
+  } catch (e) {
+    return src;
+  }
+}
+
+function CustomImageView({ node }: NodeViewProps) {
+  const tauriSrc = getTauriSafeSrc((node.attrs.src as string) || "");
+  return (
+    <NodeViewWrapper className="my-3 flex justify-center">
+      <img
+        src={tauriSrc}
+        alt={(node.attrs.alt as string) || ""}
+        title={(node.attrs.title as string) || ""}
+        className="max-h-[400px] max-w-full rounded-md border border-border/80 shadow-sm"
+      />
+    </NodeViewWrapper>
+  );
+}
+
+const CustomImage = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(CustomImageView);
+  },
+});
+
 interface NoteEditorProps {
   content: string;
   onChange: (markdown: string) => void;
@@ -146,6 +191,7 @@ export function NoteEditor({ content, onChange, noteId }: NoteEditorProps) {
     extensions: [
       StarterKit.configure({ codeBlock: false }),
       CodeBlock,
+      CustomImage,
       slashCommand,
       Link.configure({
         openOnClick: false,
